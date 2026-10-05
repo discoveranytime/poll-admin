@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poll Admin Dashboard</title>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#07090f; --bg2:#0a0d16; --card:#0e1220; --card2:#12172a;
+  --line:rgba(255,255,255,.09); --ink:#edf0f9; --muted:#a9b1c9; --faint:#7f88a5;
+  --accent:#7cc7ff; --teal:#5eead4; --org:#fb923c; --amber:#fbbf24;
+  --rose:#fb7185; --green:#4ade80; --red:#f87171;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0 0 .6rem;letter-spacing:-.01em}
+p{color:var(--muted);line-height:1.55}
+a{color:var(--accent)}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg2);
+  border:1px solid var(--line);border-radius:10px;padding:.6rem .75rem;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+input[type=checkbox]{width:auto;accent-color:var(--accent)}
+input[type=color]{padding:.15rem;height:2.4rem}
+label{display:block;font-size:.85rem;color:var(--muted);margin:.8rem 0 .3rem}
+.wrap{max-width:1180px;margin:0 auto;padding:0 1rem 4rem}
+
+/* ---------- setup notice / auth ---------- */
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.8rem;
+  box-shadow:0 18px 50px rgba(0,0,0,.45);width:100%}
+.auth-card{max-width:420px}
+.auth-card h1{font-size:1.5rem}
+.notice-card{max-width:640px}
+.badge{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.badge.warn{color:var(--amber);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border:1px solid var(--line);
+  background:var(--card2);color:var(--ink);border-radius:10px;padding:.6rem 1.1rem;font-weight:700}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:linear-gradient(100deg,#7cc7ff,#5eead4);color:#06121f;border:none}
+.btn.danger{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5);color:var(--red)}
+.btn.small{padding:.35rem .7rem;font-size:.82rem;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+.mt{margin-top:1rem}.mb{margin-bottom:1rem}
+.muted{color:var(--muted)}.small{font-size:.85rem}
+.hidden{display:none!important}
+.err{color:var(--red);font-size:.9rem;margin-top:.6rem}
+.ok{color:var(--green);font-size:.9rem;margin-top:.6rem}
+
+/* ---------- app header + tabs ---------- */
+header.app{position:sticky;top:0;z-index:50;background:rgba(7,9,15,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line)}
+.topbar{max-width:1180px;margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;gap:1rem}
+.topbar h1{font-size:1.05rem;margin:0}
+.topbar .spacer{flex:1}
+.topbar .who{font-size:.82rem;color:var(--muted)}
+nav.tabs{max-width:1180px;margin:0 auto;padding:0 1rem;display:flex;gap:.25rem;overflow-x:auto;
+  scrollbar-width:thin}
+nav.tabs button{background:none;border:none;color:var(--muted);padding:.8rem .9rem;font-weight:700;
+  border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ---------- panels, cards, tables ---------- */
+.panel{display:none;padding-top:1.4rem}
+.panel.active{display:block}
+.grid{display:grid;gap:1rem}
+.stats{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem}
+.stat .k{font-size:.75rem;color:var(--faint);text-transform:uppercase;letter-spacing:.07em}
+.stat .v{font-size:1.55rem;font-weight:800;margin-top:.25rem}
+.stat .v.good{color:var(--green)}.stat .v.bad{color:var(--red)}.stat .v.warn{color:var(--amber)}
+.two{grid-template-columns:1fr 1fr}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:.6rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--faint);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+tr:hover td{background:rgba(255,255,255,.02)}
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:var(--radius)}
+.tablewrap table{min-width:640px}
+.status{font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:.25rem .6rem;border-radius:999px;border:1px solid var(--line)}
+.status.draft{color:var(--faint)}.status.scheduled{color:var(--amber);border-color:rgba(251,191,36,.4)}
+.status.open{color:var(--green);border-color:rgba(74,222,128,.4)}
+.status.closed{color:var(--rose);border-color:rgba(251,113,133,.4)}
+.status.valid{color:var(--green)}.status.flagged{color:var(--amber)}.status.invalid{color:var(--red)}
+.hash{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;color:var(--faint)}
+pre.details{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:.5rem;
+  font-size:.78rem;max-width:420px;overflow-x:auto;color:var(--muted);margin:.25rem 0 0}
+
+/* ---------- answer bars ---------- */
+.abar{margin:.55rem 0}
+.abar .top{display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:.25rem}
+.abar .bar{height:10px;background:var(--bg2);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.abar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--teal))}
+.abar .pct{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- charts ---------- */
+canvas.chart{width:100%;height:220px;display:block}
+.legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:.5rem}
+.legend i{display:inline-block;width:.8rem;height:.8rem;border-radius:3px;margin-right:.35rem;vertical-align:baseline}
+
+/* ---------- modal ---------- */
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;display:flex;
+  align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.6rem;
+  width:100%;max-width:620px}
+.modal h2{font-size:1.25rem}
+.modal .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 .9rem}
+@media(max-width:560px){.modal .grid2{grid-template-columns:1fr}}
+.optrow{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+.optrow input{flex:1}
+.optrow .pos{width:3.2rem;flex:none}
+
+/* ---------- toast ---------- */
+#toasts{position:fixed;bottom:1rem;right:1rem;z-index:200;display:flex;flex-direction:column;gap:.5rem}
+.toast{background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:10px;padding:.7rem 1rem;font-size:.88rem;max-width:min(92vw,360px)}
+.toast.err{border-left-color:var(--red)}.toast.ok{border-left-color:var(--green)}
+
+/* ---------- misc ---------- */
+.qr{background:#fff;padding:.8rem;border-radius:10px;display:inline-block}
+.qr svg{display:block;max-width:220px;height:auto}
+.secret{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;
+  background:var(--bg2);border:1px dashed var(--line);border-radius:8px;padding:.6rem;font-size:.8rem}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:.4rem .8rem;font-size:.9rem;margin:.8rem 0}
+.kv dt{color:var(--faint)}.kv dd{margin:0}
+.tooltip{cursor:help;border-bottom:1px dotted var(--faint)}
+.toolbar{display:flex;gap:.7rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem}
+.toolbar>div{min-width:180px}
+.danger-zone{border:1px solid rgba(248,113,113,.4);border-radius:var(--radius);padding:1.2rem;margin-top:1.4rem}
+select.pollsel{max-width:420px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ PREVIEW / SETUP NOTICE ============ -->
+<div id="setup-view" class="center hidden">
+  <div class="card notice-card">
+    <span class="badge warn">Preview mode</span>
+    <h1 class="mt">Backend not connected</h1>
+    <p>This admin dashboard needs a Supabase backend. To connect it:</p>
+    <ol class="muted small">
+      <li>Create a Supabase project and run the schema + RLS SQL from the project README.</li>
+      <li>Create your admin user (Supabase Auth → Users), then insert their <code>user_id</code> into the <code>admins</code> table.</li>
+      <li>Edit <code>admin/config.js</code> and fill in <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code>.</li>
+      <li>Optionally set <code>TURNSTILE_SITEKEY</code> for CAPTCHA on the public poll.</li>
+    </ol>
+    <p class="small muted">No secrets are committed — <code>config.js</code> only holds the public anon key. See the README for full setup, Edge Function, and deployment instructions.</p>
+  </div>
+</div>
+
+<!-- ============ AUTH ============ -->
+<div id="auth-view" class="center hidden">
+  <div class="card auth-card">
+    <div id="login-step">
+      <h1>Admin sign in</h1>
+      <p class="small">Restricted area. Sign-in attempts may be logged.</p>
+      <form id="login-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <div class="mt"><button class="btn primary" type="submit" style="width:100%">Sign in</button></div>
+      </form>
+      <p class="err" id="login-err" role="alert"></p>
+    </div>
+    <div id="mfa-step" class="hidden">
+      <h1>Two-factor code</h1>
+      <p class="small">Enter the 6-digit code from your authenticator app.</p>
+      <form id="mfa-form">
+        <label for="mfa-code">Authenticator code</label>
+        <input id="mfa-code" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code" required>
+        <div class="mt row">
+          <button class="btn primary" type="submit">Verify</button>
+          <button class="btn" type="button" id="mfa-cancel">Cancel</button>
+        </div>
+      </form>
+      <p class="err" id="mfa-err" role="alert"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header class="app">
+    <div class="topbar">
+      <h1>📊 Poll Admin</h1>
+      <span class="spacer"></span>
+      <span class="who" id="who"></span>
+      <button class="btn small" id="logout-btn">Log out</button>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Admin sections">
+      <button role="tab" aria-selected="true" data-tab="overview">Overview</button>
+      <button role="tab" aria-selected="false" data-tab="polls">Polls</button>
+      <button role="tab" aria-selected="false" data-tab="moderation">Moderation</button>
+      <button role="tab" aria-selected="false" data-tab="intelligence">Intelligence</button>
+      <button role="tab" aria-selected="false" data-tab="audit">Audit log</button>
+      <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <!-- OVERVIEW -->
+    <section class="panel active" id="panel-overview" role="tabpanel">
+      <div class="toolbar">
+        <div><label for="ov-poll">Poll</label><select id="ov-poll" class="pollsel"></select></div>
+        <div><button class="btn small" id="ov-refresh">Refresh</button></div>
+      </div>
+      <div class="grid stats" id="ov-stats"></div>
+      <div class="grid two mt">
+        <div class="card"><h3>Answer breakdown</h3><div id="ov-answers"></div></div>
+        <div class="card"><h3>New vs returning</h3><canvas class="chart" id="ov-donut" height="220"></canvas><div class="legend" id="ov-donut-legend"></div></div>
+      </div>
+      <div class="grid two mt">
+        <div class="card"><h3>Votes over time</h3><canvas class="chart" id="ov-line"></canvas></div>
+        <div class="card"><h3>Votes by hour (UTC)</h3><canvas class="chart" id="ov-hours"></canvas></div>
+      </div>
+      <div class="card mt"><h3>Top countries</h3><div id="ov-countries" class="muted small">—</div></div>
+    </section>
+
+    <!-- POLLS -->
+    <section class="panel" id="panel-polls" role="tabpanel">
+      <div class="toolbar">
+        <div><label for="poll-status-filter">Status</label>
+          <select id="poll-status-filter"><option value="">All</option><option>draft</option><option>scheduled</option><option>open</option><option>closed</option></select></div>
+        <div><button class="btn primary" id="new-poll-btn">+ New poll</button></div>
+        <div><button class="btn small" id="polls-refresh">Refresh</button></div>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Votes</th><th>Updated</th><th>Actions</th></tr></thead>
+        <tbody id="polls-tbody"></tbody>
+      </table></div>
+    </section>
+
+    <!-- MODERATION -->
+    <section class="panel" id="panel-moderation" role="tabpanel">
+      <div class="toolbar">
+        <div><label for="mod-poll">Poll</label><select id="mod-poll" class="pollsel"></select></div>
+        <div><button class="btn small" id="mod-refresh">Refresh</button></div>
+      </div>
+      <h2>Flagged votes</h2>
+      <p class="small">Flag reasons containing <span class="hash">rate</span> indicate rate-limit hits. Validate to count a vote, Invalidate to discard it. Changes are written to the audit log.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Time</th><th>Fingerprint</th><th>IP hash</th><th>Option</th><th>Reason</th><th>Actions</th></tr></thead>
+        <tbody id="mod-tbody"></tbody>
+      </table></div>
+      <h2 class="mt">Bans</h2>
+      <form id="ban-form" class="card">
+        <div class="grid two">
+          <div><label for="ban-type">Identifier type</label>
+            <select id="ban-type"><option value="fingerprint_hash">Fingerprint hash</option><option value="ip_hash">IP hash</option></select></div>
+          <div><label for="ban-value">Hash value (full hex)</label><input id="ban-value" required spellcheck="false"></div>
+          <div><label for="ban-reason">Reason</label><input id="ban-reason" required></div>
+          <div><label for="ban-hours">Duration (hours, 0 = permanent)</label><input id="ban-hours" type="number" min="0" value="24"></div>
+        </div>
+        <div class="mt"><button class="btn danger" type="submit">Add ban</button></div>
+      </form>
+      <div class="tablewrap mt"><table>
+        <thead><tr><th>Created</th><th>Type</th><th>Hash</th><th>Reason</th><th>Expires</th><th></th></tr></thead>
+        <tbody id="bans-tbody"></tbody>
+      </table></div>
+    </section>
+
+    <!-- INTELLIGENCE -->
+    <section class="panel" id="panel-intelligence" role="tabpanel">
+      <div class="toolbar">
+        <div><label for="in-poll">Poll</label><select id="in-poll" class="pollsel"></select></div>
+        <div><button class="btn small" id="in-refresh">Refresh</button></div>
+      </div>
+      <div class="card" id="intel-card"><p class="muted">Select a poll to generate its community-intelligence summary.</p></div>
+    </section>
+
+    <!-- AUDIT -->
+    <section class="panel" id="panel-audit" role="tabpanel">
+      <div class="toolbar">
+        <div><button class="btn small" id="audit-refresh">Refresh</button></div>
+        <span class="small muted">Latest 200 entries. Triggers record poll/option/vote/ban/settings changes automatically.</span>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+        <tbody id="audit-tbody"></tbody>
+      </table></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="panel" id="panel-settings" role="tabpanel">
+      <div class="card">
+        <h2>Data retention</h2>
+        <div class="row">
+          <div style="min-width:220px"><label for="retention-days">Retention (days)</label><input id="retention-days" type="number" min="1" value="365"></div>
+          <div><button class="btn" id="retention-save" style="margin-top:1.9rem">Save</button></div>
+        </div>
+        <p class="small">Votes and counted views older than the retention window can be purged per poll.</p>
+        <div class="toolbar">
+          <div><label for="purge-poll">Purge target poll</label><select id="purge-poll" class="pollsel"></select></div>
+          <div><button class="btn danger" id="purge-btn" style="margin-top:1.9rem">Purge old data…</button></div>
+        </div>
+      </div>
+      <div class="card mt">
+        <h2>CSV export</h2>
+        <div class="toolbar">
+          <div><label for="csv-poll">Poll</label><select id="csv-poll" class="pollsel"></select></div>
+          <div><button class="btn" id="csv-btn" style="margin-top:1.9rem">Download CSV</button></div>
+        </div>
+        <p class="small">Exports up to 5,000 votes (valid, flagged, invalid) with a status column. Your data stays yours — exports are generated locally from the database, never routed through a third party.</p>
+      </div>
+      <div class="card mt">
+        <h2>Two-factor authentication</h2>
+        <div id="mfa-status" class="small muted">Loading…</div>
+        <div id="mfa-enroll-box" class="hidden mt">
+          <p class="small">Scan this QR code with your authenticator app, then enter the 6-digit code to finish enrollment.</p>
+          <div class="qr" id="mfa-qr"></div>
+          <p class="small mt">Can't scan? Enter this secret manually:</p>
+          <div class="secret" id="mfa-secret"></div>
+          <form id="mfa-enroll-form" class="mt">
+            <label for="mfa-enroll-code">Verification code</label>
+            <input id="mfa-enroll-code" inputmode="numeric" maxlength="8" style="max-width:200px" required>
+            <div class="mt"><button class="btn primary" type="submit">Verify &amp; enable 2FA</button></div>
+          </form>
+          <p class="err" id="mfa-enroll-err"></p>
+        </div>
+        <div class="mt row">
+          <button class="btn" id="mfa-start-btn">Set up 2FA</button>
+          <button class="btn danger hidden" id="mfa-remove-btn">Remove 2FA</button>
+        </div>
+      </div>
+      <div class="card mt">
+        <h2>CAPTCHA</h2>
+        <p class="small">Turnstile is configured with the <strong>public site key</strong> in <code>admin/config.js</code> (<code>TURNSTILE_SITEKEY</code>). The secret key lives only as an Edge Function environment variable — never in frontend code. Per-poll CAPTCHA can be toggled in the poll editor.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div id="toasts" aria-live="polite"></div>
+<script type="module">
+/* ================================================================
+ * Poll Admin Dashboard
+ * Contract: ../docs/API.md — tables, RPCs, RLS (is_admin()), preview mode.
+ * Supabase JS v2 is loaded via CDN ESM only when a backend is configured.
+ * ================================================================ */
+
+const CFG = (window.POLL_CONFIG || {});
+const PREVIEW = !CFG.SUPABASE_URL;
+let supabase = null;          // supabase-js client (null in preview mode)
+let currentUser = null;       // auth user
+let pollsCache = [];          // all polls, refreshed per tab
+let pendingFactorId = null;   // MFA challenge in progress
+let enrollFactorId = null;    // 2FA enrollment in progress
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const trunc = (s, n = 12) => s ? String(s).slice(0, n) + (String(s).length > n ? '…' : '') : '—';
+const fmtDate = (iso) => iso ? new Date(iso).toLocaleString() : '—';
+const fmtNum = (n) => Number(n ?? 0).toLocaleString();
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 5200);
+}
+
+/* ---------------- modal ---------------- */
+function openModal(title, bodyHTML, onMount) {
+  const root = $('modal-root');
+  root.innerHTML = `
+    <div class="modal-back" id="modal-back">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <h2>${esc(title)}</h2>
+        <div id="modal-body">${bodyHTML}</div>
+      </div>
+    </div>`;
+  $('modal-back').addEventListener('mousedown', (e) => { if (e.target.id === 'modal-back') closeModal(); });
+  document.addEventListener('keydown', escClose);
+  if (onMount) onMount($('modal-body'));
+  const first = $('modal-body').querySelector('input,select,textarea,button');
+  if (first) first.focus();
+}
+function escClose(e) { if (e.key === 'Escape') closeModal(); }
+function closeModal() {
+  $('modal-root').innerHTML = '';
+  document.removeEventListener('keydown', escClose);
+}
+
+/* ---------------- canvas helpers ---------------- */
+function ctx2d(canvas, hCss = 220) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth || 600;
+  canvas.width = w * dpr; canvas.height = hCss * dpr;
+  canvas.style.height = hCss + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, hCss);
+  return { ctx, w, h: hCss };
+}
+const CSS = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function drawLineChart(canvas, points) {
+  // points: [{x:'2026-10-01', y:42}]
+  const { ctx, w, h } = ctx2d(canvas);
+  const padL = 44, padB = 26, padT = 12, padR = 10;
+  const maxY = Math.max(1, ...points.map(p => p.y));
+  const iw = w - padL - padR, ih = h - padT - padB;
+  ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.fillStyle = '#7f88a5';
+  ctx.font = '11px system-ui'; ctx.lineWidth = 1;
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const v = Math.round(maxY * i / steps), y = padT + ih - (ih * i / steps);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(String(v), 6, y + 4);
+  }
+  if (!points.length) { ctx.fillText('No data', padL + 10, padT + 20); return; }
+  const X = (i) => padL + (points.length === 1 ? iw / 2 : iw * i / (points.length - 1));
+  const Y = (v) => padT + ih - (ih * v / maxY);
+  // area
+  const grad = ctx.createLinearGradient(0, padT, 0, h - padB);
+  grad.addColorStop(0, 'rgba(124,199,255,.35)'); grad.addColorStop(1, 'rgba(124,199,255,0)');
+  ctx.beginPath();
+  points.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p.y)) : ctx.moveTo(X(i), Y(p.y)));
+  ctx.lineTo(X(points.length - 1), padT + ih); ctx.lineTo(X(0), padT + ih); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  // line + dots
+  ctx.beginPath();
+  points.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p.y)) : ctx.moveTo(X(i), Y(p.y)));
+  ctx.strokeStyle = '#7cc7ff'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = '#7cc7ff';
+  points.forEach((p, i) => { ctx.beginPath(); ctx.arc(X(i), Y(p.y), 3, 0, 7); ctx.fill(); });
+  // x labels (sparse)
+  ctx.fillStyle = '#7f88a5';
+  const stride = Math.max(1, Math.ceil(points.length / 6));
+  points.forEach((p, i) => { if (i % stride === 0) ctx.fillText(String(p.x).slice(5), X(i) - 14, h - 8); });
+}
+function drawHourBars(canvas, hours) {
+  // hours: [{hour:0..23, votes}]
+  const { ctx, w, h } = ctx2d(canvas);
+  const padL = 34, padB = 22, padT = 12, padR = 8;
+  const maxV = Math.max(1, ...hours.map(x => x.votes));
+  const iw = w - padL - padR, ih = h - padT - padB;
+  const bw = iw / 24;
+  ctx.fillStyle = '#7f88a5'; ctx.font = '10px system-ui';
+  hours.forEach(({ hour, votes }) => {
+    const bh = ih * votes / maxV;
+    const x = padL + hour * bw, y = padT + ih - bh;
+    const peak = votes === maxV && votes > 0;
+    ctx.fillStyle = peak ? '#fbbf24' : 'rgba(124,199,255,.55)';
+    ctx.fillRect(x + 1, y, Math.max(1, bw - 2), bh);
+    if (hour % 6 === 0) { ctx.fillStyle = '#7f88a5'; ctx.fillText(hour + 'h', x, h - 6); }
+  });
+  ctx.strokeStyle = 'rgba(255,255,255,.12)';
+  ctx.beginPath(); ctx.moveTo(padL, padT + ih); ctx.lineTo(w - padR, padT + ih); ctx.stroke();
+}
+function drawDonut(canvas, segments) {
+  // segments: [{label, value, color}]
+  const { ctx, w, h } = ctx2d(canvas);
+  const total = segments.reduce((a, s) => a + s.value, 0);
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 18, ir = r * 0.62;
+  if (!total) { ctx.fillStyle = '#7f88a5'; ctx.font = '12px system-ui'; ctx.fillText('No data', cx - 24, cy); return; }
+  let a = -Math.PI / 2;
+  segments.forEach(s => {
+    const a2 = a + (s.value / total) * Math.PI * 2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, a, a2); ctx.arc(cx, cy, ir, a2, a, true);
+    ctx.closePath(); ctx.fillStyle = s.color; ctx.fill();
+    a = a2;
+  });
+  ctx.fillStyle = '#edf0f9'; ctx.font = '800 20px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText(fmtNum(total), cx, cy + 7);
+}
+
+/* ================================================================
+ * AUTH
+ * ================================================================ */
+async function initSupabase() {
+  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  supabase = createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+}
+
+function showView(name) {
+  ['setup-view', 'auth-view', 'app'].forEach(v => $(v).classList.toggle('hidden', v !== name));
+}
+
+async function requireAdmin() {
+  // Throws if the signed-in user is not in the admins table.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No active session.');
+  const { data, error } = await supabase.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Access denied: this account is not an admin.');
+  currentUser = user;
+  return user;
+}
+
+async function postLogin() {
+  // Enforces MFA if enrolled, then admin membership. Returns true when fully authed.
+  const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalErr) throw aalErr;
+  if (aal.nextLevel === 'aal2') {
+    const { data: factors, error: fErr } = await supabase.auth.mfa.listFactors();
+    if (fErr) throw fErr;
+    const totp = (factors?.totp || []).find(f => f.status === 'verified') || (factors?.totp || [])[0];
+    if (!totp) { await supabase.auth.signOut(); throw new Error('This account requires MFA but no authenticator is enrolled.'); }
+    pendingFactorId = totp.id;
+    $('login-step').classList.add('hidden');
+    $('mfa-step').classList.remove('hidden');
+    $('mfa-code').focus();
+    return false;
+  }
+  await requireAdmin();
+  enterApp();
+  return true;
+}
+
+function enterApp() {
+  showView('app');
+  $('who').textContent = currentUser.email || currentUser.id.slice(0, 8);
+  loadPollSelectors().then(() => { refreshOverview(); refreshPolls(); });
+}
+
+async function boot() {
+  if (PREVIEW) { showView('setup-view'); return; }
+  try {
+    await initSupabase();
+  } catch (e) {
+    $('setup-view').classList.remove('hidden');
+    return;
+  }
+  // Restore session if present
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    try { if (await postLogin()) return; showView('auth-view'); return; }
+    catch (e) { /* fall through to login */ }
+  }
+  showView('auth-view');
+}
+
+$('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('login-err').textContent = '';
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: $('email').value.trim(), password: $('password').value
+    });
+    if (error) throw error;
+    await postLogin();
+  } catch (err) {
+    $('login-err').textContent = err.message || 'Sign-in failed.';
+  } finally { btn.disabled = false; }
+});
+
+$('mfa-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('mfa-err').textContent = '';
+  try {
+    const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: pendingFactorId });
+    if (chErr) throw chErr;
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: pendingFactorId, challengeId: ch.id, code: $('mfa-code').value.trim()
+    });
+    if (error) throw error;
+    await requireAdmin();
+    enterApp();
+  } catch (err) {
+    $('mfa-err').textContent = err.message || 'Verification failed.';
+  }
+});
+$('mfa-cancel').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  pendingFactorId = null;
+  $('mfa-step').classList.add('hidden');
+  $('login-step').classList.remove('hidden');
+});
+$('logout-btn').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+/* ================================================================
+ * TABS
+ * ================================================================ */
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', 'false'));
+    btn.setAttribute('aria-selected', 'true');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    $('panel-' + btn.dataset.tab).classList.add('active');
+    ({ overview: refreshOverview, polls: refreshPolls, moderation: refreshModeration,
+       intelligence: refreshIntelligence, audit: refreshAudit, settings: refreshSettings })[btn.dataset.tab]();
+  });
+});
+
+/* ================================================================
+ * POLLS (shared)
+ * ================================================================ */
+async function fetchPolls() {
+  const { data, error } = await supabase.from('polls')
+    .select('id,slug,title,description,topic,category,status,hide_results_until_close,require_captcha,disclaimer,theme,scheduled_opens_at,scheduled_closes_at,created_at,updated_at')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  pollsCache = data || [];
+  return pollsCache;
+}
+async function fetchVoteCounts() {
+  // valid-vote counts per poll for the table
+  const { data, error } = await supabase.from('votes').select('poll_id').eq('status', 'valid');
+  if (error) return {};
+  const m = {};
+  (data || []).forEach(v => { m[v.poll_id] = (m[v.poll_id] || 0) + 1; });
+  return m;
+}
+function fillPollSelects() {
+  ['ov-poll', 'mod-poll', 'in-poll', 'purge-poll', 'csv-poll'].forEach(id => {
+    const sel = $(id);
+    const cur = sel.value;
+    sel.innerHTML = pollsCache.map(p =>
+      `<option value="${p.id}">${esc(p.title)} (${esc(p.status)})</option>`).join('');
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  });
+}
+async function loadPollSelectors() {
+  await fetchPolls();
+  fillPollSelects();
+}
+
+/* ================================================================
+ * OVERVIEW
+ * Engagement score (0–100), computed client-side:
+ *   0.50 × min(conversion×2, 100)          — vote-to-view conversion (50%+ → full marks)
+ * + 0.30 × min(100×ln(1+votes/day)/ln(51)) — vote velocity, log-scaled (50/day → full marks)
+ * + 0.20 × 100×(entropy/ln(n))             — answer spread, normalized Shannon entropy
+ * Hover the score for this formula.
+ * ================================================================ */
+const ENG_FORMULA = 'Engagement = 0.5×min(conversion×2,100) + 0.3×min(100×ln(1+votes/day)/ln(51),100) + 0.2×100×(entropy/ln(n))';
+
+function engagementScore(ov) {
+  const convPart = Math.min((ov.conversion || 0) * 2, 100);
+  const days = Math.max(1, (ov.votes_by_day || []).length);
+  const vpd = (ov.votes || 0) / days;
+  const velPart = Math.min(100 * Math.log1p(vpd) / Math.log1p(50), 100);
+  const opts = (ov.options || []).filter(o => o.votes > 0);
+  const total = opts.reduce((a, o) => a + o.votes, 0) || 1;
+  let ent = 0;
+  opts.forEach(o => { const p = o.votes / total; ent -= p * Math.log(p); });
+  const spreadPart = opts.length > 1 ? (ent / Math.log(opts.length)) * 100 : 0;
+  return Math.round(0.5 * convPart + 0.3 * velPart + 0.2 * spreadPart);
+}
+const engLabel = (s) => s >= 75 ? 'Very High' : s >= 50 ? 'High' : s >= 25 ? 'Medium' : 'Low';
+
+async function refreshOverview() {
+  if (PREVIEW || !supabase || !currentUser) return;
+  const pollId = $('ov-poll').value;
+  if (!pollId) { $('ov-stats').innerHTML = '<p class="muted">No polls yet.</p>'; return; }
+  try {
+    const { data, error } = await supabase.rpc('admin_poll_overview', { p_poll_id: pollId });
+    if (error) throw error;
+    renderOverview(data);
+  } catch (e) { toast('Overview failed: ' + e.message, 'err'); }
+}
+
+function renderOverview(ov) {
+  const eng = engagementScore(ov);
+  const stats = [
+    ['Total views', fmtNum(ov.views), ''],
+    ['Total votes', fmtNum(ov.votes), ''],
+    ['Valid votes', fmtNum(ov.valid_votes), 'good'],
+    ['Conversion', (ov.conversion ?? 0).toFixed(1) + '%', ''],
+    [`Engagement <span class="tooltip" title="${esc(ENG_FORMULA)}">ⓘ</span>`, eng + ' <span class="small muted">' + engLabel(eng) + '</span>', ''],
+    ['Flagged', fmtNum(ov.flagged), (ov.flagged > 0 ? 'warn' : '')],
+    ['Invalid', fmtNum(ov.invalid), (ov.invalid > 0 ? 'bad' : '')],
+    ['Bans', fmtNum(ov.bans), (ov.bans > 0 ? 'warn' : '')],
+  ];
+  $('ov-stats').innerHTML = stats.map(([k, v, c]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('');
+
+  const total = Math.max(1, (ov.options || []).reduce((a, o) => a + o.votes, 0));
+  $('ov-answers').innerHTML = (ov.options || []).map(o => `
+    <div class="abar">
+      <div class="top"><span>${esc(o.emoji || '')} ${esc(o.label)}</span><span class="pct">${fmtNum(o.votes)} · ${(o.pct ?? (o.votes / total * 100)).toFixed(1)}%</span></div>
+      <div class="bar"><div class="fill" style="width:${Math.min(100, (o.pct ?? (o.votes / total * 100)))}%"></div></div>
+    </div>`).join('') || '<p class="muted">No votes yet.</p>';
+
+  const nvr = ov.new_vs_returning || { new: 0, returning: 0 };
+  drawDonut($('ov-donut'), [
+    { label: 'New', value: nvr.new || 0, color: '#7cc7ff' },
+    { label: 'Returning', value: nvr.returning || 0, color: '#5eead4' },
+  ]);
+  $('ov-donut-legend').innerHTML =
+    `<span><i style="background:#7cc7ff"></i>New (${fmtNum(nvr.new)})</span>
+     <span><i style="background:#5eead4"></i>Returning (${fmtNum(nvr.returning)})</span>`;
+
+  drawLineChart($('ov-line'), (ov.votes_by_day || []).map(d => ({ x: d.day, y: d.votes })));
+  const hourMap = {};
+  (ov.votes_by_hour || []).forEach(r => { hourMap[r.hour] = r.votes; });
+  drawHourBars($('ov-hours'), Array.from({ length: 24 }, (_, h) => ({ hour: h, votes: hourMap[h] || 0 })));
+
+  const tc = ov.top_countries || [];
+  $('ov-countries').innerHTML = tc.length
+    ? tc.map(c => `<span class="status" style="margin:.15rem">${esc(c.country_code)} · ${fmtNum(c.votes)}</span>`).join(' ')
+    : 'No geographic data collected.';
+}
+$('ov-refresh').addEventListener('click', refreshOverview);
+$('ov-poll').addEventListener('change', refreshOverview);
+window.addEventListener('resize', () => { if ($('panel-overview').classList.contains('active')) refreshOverview(); });
+
+/* ================================================================
+ * POLLS TAB
+ * ================================================================ */
+async function refreshPolls() {
+  if (PREVIEW || !supabase || !currentUser) return;
+  try {
+    await fetchPolls();
+    fillPollSelects();
+    const counts = await fetchVoteCounts();
+    const filter = $('poll-status-filter').value;
+    const rows = pollsCache.filter(p => !filter || p.status === filter);
+    $('polls-tbody').innerHTML = rows.map(p => `
+      <tr>
+        <td><strong>${esc(p.title)}</strong><br><span class="small muted">${esc(p.topic || '')}${p.topic && p.category ? ' · ' : ''}${esc(p.category || '')}</span></td>
+        <td class="hash">${esc(p.slug)}</td>
+        <td><span class="status ${esc(p.status)}">${esc(p.status)}</span></td>
+        <td>${fmtNum(counts[p.id] || 0)}</td>
+        <td class="small muted">${fmtDate(p.updated_at)}</td>
+        <td><div class="row" style="gap:.35rem">
+          <button class="btn small" data-act="options" data-id="${p.id}">Options</button>
+          <button class="btn small" data-act="edit" data-id="${p.id}">Edit</button>
+          <button class="btn small" data-act="dup" data-id="${p.id}">Duplicate</button>
+          <button class="btn small" data-act="schedule" data-id="${p.id}">Schedule</button>
+          ${p.status !== 'open' ? `<button class="btn small" data-act="open" data-id="${p.id}">Start</button>` : ''}
+          ${p.status === 'open' || p.status === 'scheduled' ? `<button class="btn small" data-act="close" data-id="${p.id}">Close</button>` : ''}
+          <button class="btn small" data-act="reset" data-id="${p.id}">Reset</button>
+          <button class="btn small danger" data-act="del" data-id="${p.id}">Delete</button>
+        </div></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="muted">No polls match.</td></tr>';
+  } catch (e) { toast('Polls failed: ' + e.message, 'err'); }
+}
+$('poll-status-filter').addEventListener('change', refreshPolls);
+$('polls-refresh').addEventListener('click', refreshPolls);
+
+$('polls-tbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const p = pollsCache.find(x => x.id === btn.dataset.id);
+  if (!p) return;
+  const act = btn.dataset.act;
+  try {
+    if (act === 'edit') openPollEditor(p);
+    else if (act === 'options') openOptionsManager(p);
+    else if (act === 'dup') await duplicatePoll(p);
+    else if (act === 'schedule') openScheduleModal(p);
+    else if (act === 'open') await setPollStatus(p, 'open');
+    else if (act === 'close') await setPollStatus(p, 'closed');
+    else if (act === 'reset') await resetPoll(p);
+    else if (act === 'del') await deletePoll(p);
+  } catch (err) { toast(err.message, 'err'); }
+});
+
+const THEME_FIELDS = [['accent', '#7cc7ff'], ['accent2', '#5eead4'], ['accent3', '#fb923c'],
+  ['bg', '#06070d'], ['card', '#0d1020'], ['ink', '#edf0f9'], ['muted', '#a9b1c9']];
+
+function pollFormHTML(p = {}) {
+  const t = p.theme || {};
+  return `
+  <form id="poll-form">
+    <div class="modal grid2">
+      <div style="grid-column:1/-1"><label>Title *</label><input name="title" required value="${esc(p.title || '')}"></div>
+      <div style="grid-column:1/-1"><label>Slug * <span class="small muted">(used in ?poll=…)</span></label><input name="slug" required pattern="[a-z0-9-]+" value="${esc(p.slug || '')}"></div>
+      <div style="grid-column:1/-1"><label>Description</label><textarea name="description" rows="2">${esc(p.description || '')}</textarea></div>
+      <div><label>Topic</label><input name="topic" value="${esc(p.topic || '')}" placeholder="e.g. Retatrutide"></div>
+      <div><label>Category</label><input name="category" value="${esc(p.category || '')}" placeholder="e.g. Weight Loss / Metabolic Health"></div>
+      <div style="grid-column:1/-1"><label>Disclaimer (shown under the poll)</label><textarea name="disclaimer" rows="2">${esc(p.disclaimer || '')}</textarea></div>
+      <div><label><input type="checkbox" name="require_captcha" ${p.require_captcha ? 'checked' : ''}> Require CAPTCHA to vote</label></div>
+      <div><label><input type="checkbox" name="hide_results_until_close" ${p.hide_results_until_close ? 'checked' : ''}> Hide results until poll closes</label></div>
+      <div style="grid-column:1/-1"><label>Theme colors</label>
+        <div class="row">${THEME_FIELDS.map(([k, d]) =>
+          `<span><input type="color" name="theme_${k}" value="${esc(t[k] || d)}" title="${k}" style="width:3rem"><br><span class="small muted">${k}</span></span>`).join('')}
+        </div></div>
+    </div>
+    <div class="mt row"><button class="btn primary" type="submit">Save poll</button>
+    <button class="btn" type="button" id="modal-cancel">Cancel</button></div>
+  </form>`;
+}
+
+function readPollForm(form, base = {}) {
+  const fd = new FormData(form);
+  const theme = {};
+  THEME_FIELDS.forEach(([k]) => { theme[k] = fd.get('theme_' + k); });
+  return {
+    ...base,
+    title: fd.get('title').trim(),
+    slug: fd.get('slug').trim().toLowerCase(),
+    description: fd.get('description').trim() || null,
+    topic: fd.get('topic').trim() || null,
+    category: fd.get('category').trim() || null,
+    disclaimer: fd.get('disclaimer').trim() || null,
+    require_captcha: !!fd.get('require_captcha'),
+    hide_results_until_close: !!fd.get('hide_results_until_close'),
+    theme,
+  };
+}
+
+function openPollEditor(poll) {
+  const isNew = !poll;
+  openModal(isNew ? 'New poll' : 'Edit poll', pollFormHTML(poll || {}), (body) => {
+    body.querySelector('#modal-cancel').addEventListener('click', closeModal);
+    body.querySelector('#poll-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const row = readPollForm(e.target);
+        if (isNew) {
+          row.status = 'draft';
+          const { error } = await supabase.from('polls').insert(row);
+          if (error) throw error;
+          toast('Poll created as draft.', 'ok');
+        } else {
+          const { error } = await supabase.from('polls').update(row).eq('id', poll.id);
+          if (error) throw error;
+          toast('Poll updated.', 'ok');
+        }
+        closeModal();
+        await refreshPolls();
+      } catch (err) { toast('Save failed: ' + err.message, 'err'); }
+    });
+  });
+}
+$('new-poll-btn').addEventListener('click', () => openPollEditor(null));
+
+async function duplicatePoll(p) {
+  const slug = (p.slug + '-copy-' + Date.now().toString(36)).slice(0, 60);
+  const { data: np, error } = await supabase.from('polls').insert({
+    title: p.title + ' (copy)', slug, description: p.description, topic: p.topic,
+    category: p.category, disclaimer: p.disclaimer, theme: p.theme,
+    require_captcha: p.require_captcha, hide_results_until_close: p.hide_results_until_close,
+    status: 'draft',
+  }).select('id').single();
+  if (error) throw error;
+  const { data: opts } = await supabase.from('poll_options').select('label,emoji,position').eq('poll_id', p.id);
+  if (opts && opts.length) {
+    const { error: oErr } = await supabase.from('poll_options')
+      .insert(opts.map(o => ({ ...o, poll_id: np.id })));
+    if (oErr) throw oErr;
+  }
+  toast('Poll duplicated as draft.', 'ok');
+  await refreshPolls();
+}
+
+function openScheduleModal(p) {
+  const toLocal = (iso) => iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+  openModal('Schedule poll', `
+    <form id="sched-form">
+      <p class="small">A <span class="status scheduled">scheduled</span> poll becomes votable automatically between these times.</p>
+      <label>Opens at</label><input type="datetime-local" name="opens" value="${toLocal(p.scheduled_opens_at)}" required>
+      <label>Closes at</label><input type="datetime-local" name="closes" value="${toLocal(p.scheduled_closes_at)}" required>
+      <div class="mt row"><button class="btn primary" type="submit">Schedule</button>
+      <button class="btn" type="button" id="modal-cancel">Cancel</button></div>
+    </form>`, (body) => {
+    body.querySelector('#modal-cancel').addEventListener('click', closeModal);
+    body.querySelector('#sched-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const opens = new Date(fd.get('opens')), closes = new Date(fd.get('closes'));
+      if (!(opens < closes)) { toast('Open time must be before close time.', 'err'); return; }
+      const { error } = await supabase.from('polls').update({
+        status: 'scheduled', scheduled_opens_at: opens.toISOString(), scheduled_closes_at: closes.toISOString(),
+      }).eq('id', p.id);
+      if (error) { toast(error.message, 'err'); return; }
+      toast('Poll scheduled.', 'ok');
+      closeModal(); await refreshPolls();
+    });
+  });
+}
+
+async function setPollStatus(p, status) {
+  const { error } = await supabase.from('polls').update({ status }).eq('id', p.id);
+  if (error) throw error;
+  toast(`Poll ${status}.`, 'ok');
+  await refreshPolls();
+}
+
+async function resetPoll(p) {
+  openModal('Reset poll', `
+    <p>This deletes <strong>all votes and counted views</strong> for <strong>${esc(p.title)}</strong>. Options and settings are kept.</p>
+    <p class="small">Type the poll slug <span class="hash">${esc(p.slug)}</span> to confirm.</p>
+    <input id="confirm-input" placeholder="${esc(p.slug)}" autocomplete="off">
+    <div class="mt row"><button class="btn danger" id="confirm-btn" disabled>Reset everything</button>
+    <button class="btn" id="modal-cancel">Cancel</button></div>`, (body) => {
+    const inp = body.querySelector('#confirm-input'), btn = body.querySelector('#confirm-btn');
+    inp.addEventListener('input', () => { btn.disabled = inp.value.trim() !== p.slug; });
+    body.querySelector('#modal-cancel').addEventListener('click', closeModal);
+    btn.addEventListener('click', async () => {
+      try {
+        const v = await supabase.from('votes').delete().eq('poll_id', p.id);
+        if (v.error) throw v.error;
+        const vw = await supabase.from('poll_views').delete().eq('poll_id', p.id);
+        if (vw.error) throw vw.error;
+        toast('Poll reset: votes and views deleted.', 'ok');
+        closeModal(); await refreshPolls();
+      } catch (err) { toast('Reset failed: ' + err.message, 'err'); }
+    });
+  });
+}
+
+async function deletePoll(p) {
+  openModal('Delete poll', `
+    <p>Permanently delete <strong>${esc(p.title)}</strong> and all its options, votes, and views?</p>
+    <p class="small">Type the poll slug <span class="hash">${esc(p.slug)}</span> to confirm.</p>
+    <input id="confirm-input" placeholder="${esc(p.slug)}" autocomplete="off">
+    <div class="mt row"><button class="btn danger" id="confirm-btn" disabled>Delete forever</button>
+    <button class="btn" id="modal-cancel">Cancel</button></div>`, (body) => {
+    const inp = body.querySelector('#confirm-input'), btn = body.querySelector('#confirm-btn');
+    inp.addEventListener('input', () => { btn.disabled = inp.value.trim() !== p.slug; });
+    body.querySelector('#modal-cancel').addEventListener('click', closeModal);
+    btn.addEventListener('click', async () => {
+      try {
+        await supabase.from('poll_options').delete().eq('poll_id', p.id);
+        await supabase.from('votes').delete().eq('poll_id', p.id);
+        await supabase.from('poll_views').delete().eq('poll_id', p.id);
+        const { error } = await supabase.from('polls').delete().eq('id', p.id);
+        if (error) throw error;
+        toast('Poll deleted.', 'ok');
+        closeModal(); await loadPollSelectors(); await refreshPolls();
+      } catch (err) { toast('Delete failed: ' + err.message, 'err'); }
+    });
+  });
+}
+
+/* ---- options manager ---- */
+async function openOptionsManager(p) {
+  const { data: opts, error } = await supabase.from('poll_options')
+    .select('id,label,emoji,position').eq('poll_id', p.id).order('position');
+  if (error) { toast(error.message, 'err'); return; }
+  const render = () => {
+    $('opt-list').innerHTML = (opts || []).map((o, i) => `
+      <div class="optrow" data-id="${o.id}">
+        <input class="pos" type="number" value="${o.position}" min="0" title="Position" data-f="position">
+        <input value="${esc(o.emoji || '')}" maxlength="8" title="Emoji" data-f="emoji" style="max-width:4rem">
+        <input value="${esc(o.label)}" title="Label" data-f="label">
+        <button class="btn small" data-op="up" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="btn small" data-op="down" ${i === opts.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="btn small danger" data-op="del">✕</button>
+      </div>`).join('') || '<p class="muted">No options yet.</p>';
+  };
+  openModal('Manage options — ' + p.title, `
+    <div id="opt-list"></div>
+    <div class="optrow mt"><input id="new-emoji" placeholder="🔥" maxlength="8" style="max-width:4rem">
+      <input id="new-label" placeholder="New answer label…">
+      <button class="btn small primary" id="opt-add">Add</button></div>
+    <div class="mt row"><button class="btn primary" id="opt-save">Save all</button>
+    <button class="btn" id="modal-cancel">Done</button></div>
+    <p class="small muted">Removing an option keeps its votes in the database but hides them from results.</p>`, (body) => {
+    render();
+    body.querySelector('#modal-cancel').addEventListener('click', closeModal);
+    body.querySelector('#opt-list').addEventListener('click', async (e) => {
+      const row = e.target.closest('.optrow'); if (!row || !row.dataset.id) return;
+      const op = e.target.dataset.op;
+      if (op === 'del') {
+        if (!confirm('Remove this option?')) return;
+        const { error } = await supabase.from('poll_options').delete().eq('id', row.dataset.id);
+        if (error) { toast(error.message, 'err'); return; }
+        opts.splice(opts.findIndex(o => o.id === row.dataset.id), 1);
+        render(); toast('Option removed.', 'ok');
+      } else if (op === 'up' || op === 'down') {
+        const i = opts.findIndex(o => o.id === row.dataset.id);
+        const j = op === 'up' ? i - 1 : i + 1;
+        [opts[i].position, opts[j].position] = [opts[j].position, opts[i].position];
+        [opts[i], opts[j]] = [opts[j], opts[i]];
+        render();
+      }
+    });
+    body.querySelector('#opt-add').addEventListener('click', async () => {
+      const label = body.querySelector('#new-label').value.trim();
+      if (!label) { toast('Label is required.', 'err'); return; }
+      const { data, error } = await supabase.from('poll_options').insert({
+        poll_id: p.id, label, emoji: body.querySelector('#new-emoji').value.trim() || null,
+        position: (opts.reduce((m, o) => Math.max(m, o.position), -1)) + 1,
+      }).select('id,label,emoji,position').single();
+      if (error) { toast(error.message, 'err'); return; }
+      opts.push(data); render();
+      body.querySelector('#new-label').value = ''; body.querySelector('#new-emoji').value = '';
+    });
+    body.querySelector('#opt-save').addEventListener('click', async () => {
+      try {
+        for (const row of body.querySelectorAll('#opt-list .optrow')) {
+          const o = opts.find(x => x.id === row.dataset.id);
+          if (!o) continue;
+          o.position = parseInt(row.querySelector('[data-f=position]').value, 10) || 0;
+          o.emoji = row.querySelector('[data-f=emoji]').value.trim() || null;
+          o.label = row.querySelector('[data-f=label]').value.trim();
+          const { error } = await supabase.from('poll_options')
+            .update({ position: o.position, emoji: o.emoji, label: o.label }).eq('id', o.id);
+          if (error) throw error;
+        }
+        toast('Options saved.', 'ok'); render();
+      } catch (err) { toast('Save failed: ' + err.message, 'err'); }
+    });
+  });
+}
+
+/* ================================================================
+ * MODERATION TAB
+ * ================================================================ */
+async function refreshModeration() {
+  if (PREVIEW || !supabase || !currentUser) return;
+  const pollId = $('mod-poll').value;
+  if (!pollId) return;
+  try {
+    const { data, error } = await supabase.from('votes')
+      .select('id,created_at,status,flag_reason,fingerprint_hash,ip_hash,option_id,poll_options(label)')
+      .eq('poll_id', pollId).eq('status', 'flagged')
+      .order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    $('mod-tbody').innerHTML = (data || []).map(v => `
+      <tr>
+        <td class="small">${fmtDate(v.created_at)}</td>
+        <td class="hash" title="${esc(v.fingerprint_hash)}">${trunc(v.fingerprint_hash)}</td>
+        <td class="hash" title="${esc(v.ip_hash)}">${trunc(v.ip_hash)}</td>
+        <td>${esc(v.poll_options?.label || v.option_id.slice(0, 8))}</td>
+        <td class="small">${esc(v.flag_reason || '—')}${/rate/i.test(v.flag_reason || '') ? ' <span class="badge warn">rate</span>' : ''}</td>
+        <td><div class="row" style="gap:.35rem">
+          <button class="btn small" data-v="${v.id}" data-s="valid">Validate</button>
+          <button class="btn small danger" data-v="${v.id}" data-s="invalid">Invalidate</button>
+        </div></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="muted">No flagged votes. 🎉</td></tr>';
+  } catch (e) { toast('Moderation failed: ' + e.message, 'err'); }
+  try {
+    const { data, error } = await supabase.from('bans')
+      .select('id,created_at,fingerprint_hash,ip_hash,reason,expires_at')
+      .order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    $('bans-tbody').innerHTML = (data || []).map(b => {
+      const fp = b.fingerprint_hash;
+      return `<tr>
+        <td class="small">${fmtDate(b.created_at)}</td>
+        <td>${fp ? 'Fingerprint' : 'IP hash'}</td>
+        <td class="hash" title="${esc(fp || b.ip_hash)}">${trunc(fp || b.ip_hash)}</td>
+        <td class="small">${esc(b.reason || '')}</td>
+        <td class="small">${b.expires_at ? fmtDate(b.expires_at) : '<span class="status invalid">permanent</span>'}</td>
+        <td><button class="btn small" data-ban="${b.id}">Remove</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">No bans.</td></tr>';
+  } catch (e) { toast('Bans failed: ' + e.message, 'err'); }
+}
+$('mod-refresh').addEventListener('click', refreshModeration);
+$('mod-poll').addEventListener('change', refreshModeration);
+
+$('mod-tbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-v]');
+  if (!btn) return;
+  try {
+    const { error } = await supabase.from('votes').update({ status: btn.dataset.s }).eq('id', btn.dataset.v);
+    if (error) throw error;
+    toast(`Vote marked ${btn.dataset.s}.`, 'ok');   // audit trigger records this
+    refreshModeration();
+  } catch (err) { toast(err.message, 'err'); }
+});
+$('bans-tbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-ban]');
+  if (!btn) return;
+  if (!confirm('Remove this ban?')) return;
+  const { error } = await supabase.from('bans').delete().eq('id', btn.dataset.ban);
+  if (error) { toast(error.message, 'err'); return; }
+  toast('Ban removed.', 'ok'); refreshModeration();
+});
+$('ban-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const type = $('ban-type').value, value = $('ban-value').value.trim();
+  const hours = parseFloat($('ban-hours').value);
+  const row = { reason: $('ban-reason').value.trim(),
+    expires_at: hours > 0 ? new Date(Date.now() + hours * 3600e3).toISOString() : null };
+  row[type] = value;
+  const { error } = await supabase.from('bans').insert(row);
+  if (error) { toast(error.message, 'err'); return; }
+  toast('Ban added.', 'ok');
+  e.target.reset(); $('ban-hours').value = 24;
+  refreshModeration();
+});
+
+/* ================================================================
+ * INTELLIGENCE TAB — auto-generated internal summary (client-side)
+ * ================================================================ */
+const FOLLOWUP_RULES = [
+  { re: /dose|dosage|mg\b/i, idea: (t) => `What aspect of ${t} dosing are you most interested in?` },
+  { re: /side effect|risk|safety/i, idea: (t) => `Which side-effect concern about ${t} matters most to you?` },
+  { re: /cost|price|afford/i, idea: (t) => `What would you consider a fair monthly price for ${t}?` },
+  { re: /appetite|craving/i, idea: (t) => `How do appetite changes on ${t} compare to what you expected?` },
+  { re: /muscle|fat/i, idea: (t) => `How important is muscle preservation during weight loss to you?` },
+  { re: /stop|after/i, idea: (t) => `What would make you comfortable stopping ${t}?` },
+  { re: /weight|lose|pound/i, idea: (t) => `What weight-loss milestone on ${t} would feel like success to you?` },
+  { re: /metabolic|health|effect/i, idea: (t) => `Which metabolic health marker are you most curious about with ${t}?` },
+];
+const FALLBACK_IDEAS = (t) => [
+  `What would convince a skeptic to take ${t} seriously?`,
+  `What's the #1 unanswered question you still have about ${t}?`,
+];
+
+async function refreshIntelligence() {
+  if (PREVIEW || !supabase || !currentUser) return;
+  const pollId = $('in-poll').value;
+  if (!pollId) return;
+  const poll = pollsCache.find(p => p.id === pollId);
+  try {
+    const { data: ov, error } = await supabase.rpc('admin_poll_overview', { p_poll_id: pollId });
+    if (error) throw error;
+    const eng = engagementScore(ov);
+    const sorted = [...(ov.options || [])].sort((a, b) => b.votes - a.votes);
+    const top = sorted[0];
+    const topic = poll.topic || poll.title;
+    // Related topics: distinct topic/category of other polls
+    const related = [...new Set(pollsCache.filter(p => p.id !== pollId)
+      .flatMap(p => [p.topic, p.category]).filter(Boolean))].slice(0, 6);
+    // Follow-up ideas from top 2 answers
+    const ideas = [];
+    for (const o of sorted.slice(0, 2)) {
+      const rule = FOLLOWUP_RULES.find(r => r.re.test(o.label || ''));
+      if (rule) ideas.push(rule.idea(topic));
+    }
+    if (ideas.length < 2) ideas.push(...FALLBACK_IDEAS(topic));
+    const uniqIdeas = [...new Set(ideas)].slice(0, 3);
+    $('intel-card').innerHTML = `
+      <span class="badge">Internal summary — not public</span>
+      <h2 class="mt">${esc(poll.title)}</h2>
+      <dl class="kv">
+        <dt>Topic</dt><dd>${esc(poll.topic || '—')}</dd>
+        <dt>Category</dt><dd>${esc(poll.category || '—')}</dd>
+        <dt>Total votes</dt><dd>${fmtNum(ov.votes)} (${fmtNum(ov.valid_votes)} valid)</dd>
+        <dt>Engagement score</dt><dd><span class="tooltip" title="${esc(ENG_FORMULA)}">${eng} / 100 — ${engLabel(eng)}</span></dd>
+        <dt>Most popular response</dt><dd>${top ? `${esc(top.emoji || '')} ${esc(top.label)} (${(top.pct ?? 0).toFixed(1)}%)` : '—'}</dd>
+        <dt>Audience interest level</dt><dd>${engLabel(eng)}${ov.votes >= 100 ? '' : ' (early data — fewer than 100 votes)'}</dd>
+        <dt>Related topics</dt><dd>${related.length ? related.map(esc).join(' · ') : 'No other polls yet.'}</dd>
+      </dl>
+      <h3>Suggested follow-up polls</h3>
+      <ol class="muted">${uniqIdeas.map(i => `<li>${esc(i)}</li>`).join('')}</ol>
+      <p class="small muted">Generated from community responses. Summaries describe community opinion — never present them as clinical evidence.</p>`;
+  } catch (e) { toast('Intelligence failed: ' + e.message, 'err'); }
+}
+$('in-refresh').addEventListener('click', refreshIntelligence);
+$('in-poll').addEventListener('change', refreshIntelligence);
+
+/* ================================================================
+ * AUDIT LOG TAB
+ * ================================================================ */
+async function refreshAudit() {
+  if (PREVIEW || !supabase || !currentUser) return;
+  try {
+    const { data, error } = await supabase.from('audit_log')
+      .select('id,created_at,actor,action,target_type,target_id,details')
+      .order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    $('audit-tbody').innerHTML = (data || []).map(a => {
+      const actor = a.actor === currentUser.id ? 'you' : trunc(a.actor, 10);
+      return `<tr>
+        <td class="small" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
+        <td class="hash" title="${esc(a.actor || '')}">${esc(actor)}</td>
+        <td><span class="status">${esc(a.action)}</span></td>
+        <td class="small">${esc((a.target_type || '') + (a.target_id ? ' · ' + a.target_id.slice(0,10) : '') || '—')}</td>
+        <td><pre class="details">${esc(typeof a.details === 'string' ? a.details : JSON.stringify(a.details ?? {}, null, 1))}</pre></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" class="muted">No audit entries.</td></tr>';
+  } catch (e) { toast('Audit log failed: ' + e.message, 'err'); }
+}
+$('audit-refresh').addEventListener('click', refreshAudit);
+
+/* ================================================================
+ * SETTINGS TAB
+ * ================================================================ */
+async function refreshSettings() {
+  if (PREVIEW || !supabase || !currentUser) return;
+  try {
+    const { data } = await supabase.from('settings').select('key,value').eq('key', 'data_retention_days').maybeSingle();
+    if (data) $('retention-days').value = data.value;
+  } catch (e) { /* table may not exist yet — ignore */ }
+  await refreshMfaStatus();
+}
+
+$('retention-save').addEventListener('click', async () => {
+  const days = parseInt($('retention-days').value, 10);
+  if (!(days > 0)) { toast('Enter a positive number of days.', 'err'); return; }
+  const { error } = await supabase.from('settings')
+    .upsert({ key: 'data_retention_days', value: String(days) }, { onConflict: 'key' });
+  if (error) { toast(error.message, 'err'); return; }
+  toast('Retention saved.', 'ok');
+});
+
+$('purge-btn').addEventListener('click', async () => {
+  const pollId = $('purge-poll').value;
+  const days = parseInt($('retention-days').value, 10) || 365;
+  const poll = pollsCache.find(p => p.id === pollId);
+  const cutoff = new Date(Date.now() - days * 86400e3).toISOString();
+  if (!confirm(`Delete votes and counted views for "${poll?.title}" older than ${fmtDate(cutoff)}?\n\nThis cannot be undone. Export a CSV first if you need the data.`)) return;
+  try {
+    const v = await supabase.from('votes').delete().eq('poll_id', pollId).lt('created_at', cutoff);
+    if (v.error) throw v.error;
+    const vw = await supabase.from('poll_views').delete().eq('poll_id', pollId).lt('created_at', cutoff);
+    if (vw.error) throw vw.error;
+    toast('Old data purged.', 'ok');
+  } catch (e) { toast('Purge failed: ' + e.message, 'err'); }
+});
+
+$('csv-btn').addEventListener('click', async () => {
+  const pollId = $('csv-poll').value;
+  const poll = pollsCache.find(p => p.id === pollId);
+  try {
+    const { data, error } = await supabase.from('votes')
+      .select('id,created_at,status,flag_reason,fingerprint_hash,ip_hash,option_id,poll_options(label)')
+      .eq('poll_id', pollId).order('created_at', { ascending: false }).limit(5000);
+    if (error) throw error;
+    const rows = [['vote_id', 'created_at', 'status', 'flag_reason', 'option_label', 'option_id', 'fingerprint_sha256', 'ip_hash']];
+    (data || []).forEach(v => rows.push([
+      v.id, v.created_at, v.status, v.flag_reason || '',
+      (v.poll_options?.label || '').replace(/"/g, '""'), v.option_id, v.fingerprint_hash || '', v.ip_hash || '',
+    ]));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `poll-export-${poll?.slug || pollId}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(`Exported ${(data || []).length} votes.`, 'ok');
+  } catch (e) { toast('Export failed: ' + e.message, 'err'); }
+});
+
+/* ---- 2FA enrollment (TOTP via supabase-js mfa API) ---- */
+async function refreshMfaStatus() {
+  try {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) throw error;
+    const totp = (data?.totp || []).filter(f => f.status === 'verified');
+    const on = totp.length > 0;
+    $('mfa-status').innerHTML = on
+      ? `<span class="ok">✔ 2FA is enabled (${totp.length} authenticator${totp.length > 1 ? 's' : ''}).</span>`
+      : '2FA is <strong>not</strong> enabled for this account.';
+    $('mfa-start-btn').classList.toggle('hidden', on);
+    $('mfa-remove-btn').classList.toggle('hidden', !on);
+    $('mfa-remove-btn').dataset.factor = on ? totp[0].id : '';
+  } catch (e) {
+    $('mfa-status').textContent = 'Could not load MFA status: ' + e.message;
+  }
+}
+$('mfa-start-btn').addEventListener('click', async () => {
+  $('mfa-enroll-err').textContent = '';
+  try {
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Admin authenticator' });
+    if (error) throw error;
+    enrollFactorId = data.id;
+    $('mfa-qr').innerHTML = data.totp.qr_code;   // Supabase returns an inline SVG
+    $('mfa-secret').textContent = data.totp.secret;
+    $('mfa-enroll-box').classList.remove('hidden');
+    $('mfa-start-btn').classList.add('hidden');
+  } catch (e) { $('mfa-enroll-err').textContent = e.message; }
+});
+$('mfa-enroll-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('mfa-enroll-err').textContent = '';
+  try {
+    const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: enrollFactorId });
+    if (chErr) throw chErr;
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: enrollFactorId, challengeId: ch.id, code: $('mfa-enroll-code').value.trim(),
+    });
+    if (error) throw error;
+    toast('2FA enabled.', 'ok');
+    $('mfa-enroll-box').classList.add('hidden');
+    enrollFactorId = null;
+    await refreshMfaStatus();
+  } catch (err) { $('mfa-enroll-err').textContent = err.message; }
+});
+$('mfa-remove-btn').addEventListener('click', async () => {
+  if (!confirm('Remove 2FA from this account? You can re-enroll anytime.')) return;
+  const { error } = await supabase.auth.mfa.unenroll({ factorId: $('mfa-remove-btn').dataset.factor });
+  if (error) { toast(error.message, 'err'); return; }
+  toast('2FA removed.', 'ok');
+  await refreshMfaStatus();
+});
+
+/* ================================================================
+ * BOOT
+ * ================================================================ */
+boot();
+</script>
+</body>
+</html>
